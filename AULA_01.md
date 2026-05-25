@@ -8,6 +8,29 @@
 | Windows (CMD) | `python -m venv .venv`<br>`.venv\Scripts\activate.bat`<br>`python -m pip install --upgrade pip`<br>`python -m pip install -r requirements.txt` |
 | Windows (PowerShell) | `python -m venv .venv`<br>`.venv\Scripts\Activate.ps1`<br>`python -m pip install --upgrade pip`<br>`python -m pip install -r requirements.txt` |
 
+> [!NOTE]
+> Instalação separada (sem usar `requirements.txt`)
+> ```py
+> pip install db-dtypes google-auth google-cloud-bigquery igmapper ipykernel pandas-gbq pandas selenium tmdbsimple
+> ```
+
+> [!WARNING]
+> Erro `ModuleNotFoundError` → Dependência não instalada no ambiente virtual.
+> ```py
+> ------------------------------------------------------------
+> ModuleNotFoundError        Traceback (most recent call last)
+> Cell In[1], line 1
+> ----> 1 import BIBLIOTECA_X
+>
+> ModuleNotFoundError: No module named 'BIBLIOTECA_X'
+> ```
+>
+> Resolva:
+> ```py
+> pip install BIBLIOTECA_X
+> ```
+
+
 ### VSCode Extensions
 - Black Formatter (Microsoft)
 - Jupyter (Microsoft)
