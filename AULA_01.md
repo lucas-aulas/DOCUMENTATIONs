@@ -1,27 +1,12 @@
 <h1 align="center">1. Preparação do Ambiente</h1>
 
-### Ativar ambiente virtual Python
+### Ativar ambiente virtual PythonLinux / macOS
 
-Linux / macOS
-```sh
-python3.14 -m venv .venv  # CRIA O AMBIENTE VIRTUAL ".venv"
-source .venv/bin/activate # ATIVA O ".venv"
-pip install --upgrade pip # ATUALIZA O pip (INSTALADOR DO VENV)
-```
-
-Windows (CMD)
-```sh
-python -m venv .venv                # CRIA O AMBIENTE VIRTUAL ".venv"
-.venv\Scripts\activate.bat          # ATIVA O ".venv"
-python -m pip install --upgrade pip # ATUALIZA O pip (INSTALADOR DO VENV)
-```
-
-Windows (PowerShell)
-```sh
-python -m venv .venv                # CRIA O AMBIENTE VIRTUAL ".venv"
-.venv\Scripts\Activate.ps1          # ATIVA O ".venv"
-python -m pip install --upgrade pip # ATUALIZA O pip (INSTALADOR DO VENV)
-```
+| Sistema | Comandos |
+|---|---|
+| Linux/macOS | `python3.14 -m venv .venv`<br>`source .venv/bin/activate`<br>`pip install --upgrade pip`<br>`pip install -r requirements.txt` |
+| Windows (CMD) | `python -m venv .venv`<br>`.venv\Scripts\activate.bat`<br>`python -m pip install --upgrade pip`<br>`python -m pip install -r requirements.txt` |
+| Windows (PowerShell) | `python -m venv .venv`<br>`.venv\Scripts\Activate.ps1`<br>`python -m pip install --upgrade pip`<br>`python -m pip install -r requirements.txt` |
 
 ### VSCode Extensions
 - Black Formatter (Microsoft)
