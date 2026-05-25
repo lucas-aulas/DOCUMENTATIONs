@@ -5,25 +5,31 @@
 Linux/macOS
 ```sh
 python3.14 -m venv .venv
+
 source .venv/bin/activate
+
 pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 
 Windows (CMD)
 ```bash
 python -m venv .venv
+
 .venv\Scripts\activate.bat
-python -m pip install --upgrade pip
+
 python -m pip install -r requirements.txt
 ```
 
 Windows (PowerShell) *Recomendado
 ```bash
 python -m venv .venv
+
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
 .venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
+
 python -m pip install -r requirements.txt
 ```
 
