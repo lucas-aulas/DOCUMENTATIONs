@@ -213,8 +213,7 @@ df = pd.read_csv(f"{dataset_movies_url}/___NOME_DO_ARQUIVO___.csv")
 # Ex:
 df_imdb_filmes = pd.read_csv(f"{dataset_movies_url}/imdb_filmes.csv")
 
-df_tmd_ratings_small = pd.read_csv(f"{dataset_movies_url}/The_Movies_Dataset
-/tmd_ratings_small.csv")
+df_tmd_ratings_small = pd.read_csv(f"{dataset_movies_url}/The_Movies_Dataset/tmd_ratings_small.csv")
 ```
 
 
