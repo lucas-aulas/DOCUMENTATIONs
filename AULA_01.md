@@ -1,5 +1,18 @@
 <h1 align="center">1. Preparação do Ambiente</h1>
 
+# requirements.txt
+```txt
+db-dtypes
+google-auth
+google-cloud-bigquery
+igmapper
+ipykernel
+pandas-gbq
+pandas
+selenium
+tmdbsimple
+```
+
 ### Ativar ambiente virtual
 
 Linux/macOS
