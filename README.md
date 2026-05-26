@@ -256,12 +256,28 @@ df.to_gbq(
     credentials=my_gcp_cred,
 )
 ```
+
+```py
+# Ex:
+df_boxoffice_dc_marvel.to_gbq(
+    project_id="___ID_DO_SEU_PROJETO___",
+    destination_table="bronze.boxoffice_dc_marvel",
+    if_exists="replace",
+    credentials=my_gcp_cred,
+)
+```
+
 ### Opção 2: `load_table_from_dataframe`
 
 Envia um DataFrame do Pandas para uma tabela no BigQuery.
 
 ```py
 my_gcp_client.load_table_from_dataframe(df, "dataset.table_name")
+```
+
+```py
+# Ex:
+my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffice_dc_marvel")
 ```
 
 <br>
