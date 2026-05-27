@@ -147,7 +147,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 </details>
 
-<h1 align="center">3. CÓDIGO</h1>
+<h1 align="center">3. CÓDIGO · Ingestão</h1>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 ### Imports
@@ -214,7 +214,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 Lê um arquivo CSV hospedado no GitHub e carrega em um DataFrame.
 
-<img width="50%" src="assets/image-13.png">
+<img width="40%" src="assets/image-13.png">
 
 ```py
 df = pd.read_csv(f"{dataset_movies_url}/___NOME_DO_ARQUIVO___.csv")
@@ -232,7 +232,7 @@ df_tmd_ratings_small = pd.read_csv(f"{dataset_movies_url}/The_Movies_Dataset/tmd
 
 Executa uma consulta SQL no BigQuery e retorna os dados em DataFrame.
 
-<img width="50%" src="assets/image-14.png">
+<img width="25%" src="assets/image-14.png">
 
 ```py
 df = my_gcp_client.query(
@@ -292,7 +292,231 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
 ```
 </details>
 
-<h1 align="center">EXTRAS</h1>
+<h1 align="center">4. CÓDIGO · Tratamento</h1>
+<details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
+
+1. Bibliotecas que vão ser utilizadas
+    ```py
+    from google.cloud import bigquery
+    from google.oauth2 import service_account
+    import pandas as pd
+
+    # CONFIGS PARA VIEW
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.max_rows", 10)
+    ```
+2. Variáveis e informações para a ingestão
+    ```py
+    # +++++++++++++++++++++
+    # + INGESTAO DE DADOS +
+
+    # MEU BANCO
+    gcp_service_acc_file_aluno = "../secrets/__________.json"
+    gcp_id_do_projeto = "__________"
+
+    my_gcp_cred = service_account.Credentials.from_service_account_file(
+        gcp_service_acc_file_aluno
+    )
+
+    my_gcp_client = bigquery.Client(
+        credentials=my_gcp_cred
+    )
+    ```
+3. Leitura da tabela `boxoffice_dc_marvel` no BigQuery
+    ```py
+    df_boxoffice_dc_marvel = my_gcp_client.query(
+        f"""
+        SELECT *
+        FROM {gcp_id_do_projeto}.bronze.boxoffice_dc_marvel
+        """
+    ).to_dataframe(create_bqstorage_client=False)
+    ```
+4. Leitura da tabela `imdb_filmes` no BigQuery
+    ```py
+    df_imdb_filmes = my_gcp_client.query(
+        f"""
+        SELECT *
+        FROM {gcp_id_do_projeto}.bronze.imdb_filmes
+        """
+    ).to_dataframe(create_bqstorage_client=False)
+    ```
+5. Merge dos DataFrames
+    ```py
+    df_complete_movie_info = (
+        pd.merge(
+            df_boxoffice_dc_marvel,
+            df_imdb_filmes,
+            left_on=["FILM", "YEAR"],
+            right_on=["TITLE", "YEAR"],
+            how="outer"
+        )
+        .sort_values(by="YEAR", ascending=False)
+        .drop_duplicates(keep="last")
+    )
+    ```
+6. Filtrando apenas filmes da Marvel e DC
+    ```py
+    df_complete_dc_marvel = df_complete_movie_info[
+        (df_complete_movie_info["FRANCHISE"] == "Marvel") |
+        (df_complete_movie_info["FRANCHISE"] == "DC")
+    ]
+    ```
+7. Removendo colunas desnecessárias
+    ```py
+    df_complete_dc_marvel = df_complete_dc_marvel.drop(
+        columns=[
+            "25X_PROD",
+            "BOX_OFFICE_GROSS_DOMESTIC_US_AND_CANADA",
+            "BOX_OFFICE_GROSS_WORLDWIDE",
+            "BUDGET_y",
+            "DURATION",
+            "LENGTH",
+            "MPAA_RATING",
+            "TITLE",
+            "YEAR",
+        ]
+    ).reset_index(drop=True)
+    ```
+8. Visualizando os filmes com maior nota IMDB
+    ```py
+    df_complete_dc_marvel.sort_values(
+        by="RATING_IMDB",
+        ascending=False
+    ).head(2)
+    ```
+
+9. Tratamento das colunas monetárias, percentuais, datas e inteiros
+    ```py
+    df_tratado = df_complete_dc_marvel.copy()
+    ```
+
+    ```py
+    # MONETÁRIAS
+    money_cols = [
+        "BOX_OFFICE_GROSS_OTHER_TERRITORIES",
+        "BUDGET_x",
+        "INFLATION_ADJUSTED_BUDGET",
+        "INFLATION_ADJUSTED_WORLDWIDE_GROSS",
+        "GROSS_OPENING_WEEKEND",
+        "GROSS_US_CANADA",
+        "GROSS_WORLD_WIDE",
+    ]
+
+    for col in money_cols:
+        df_tratado[col] = (
+            df_tratado[col]
+            .astype(str)
+            .str.replace("$", "")
+            .str.replace(",", "")
+            .replace("None", 0)
+            .astype(float)
+        )
+    ```
+
+    ```py
+    # PERCENTUAIS
+    percent_cols = ["DOMESTIC"]
+
+    for col in percent_cols:
+        df_tratado[col] = (
+            df_tratado[col]
+            .astype(str)
+            .str.replace("%", "")
+            .astype(float)
+        )
+    ```
+
+    ```py
+    # DATA/TEMPO
+    date_cols = ["US_RELEASE_DATE"]
+
+    for col in date_cols:
+        df_tratado[col] = pd.to_datetime(
+            df_tratado[col],
+            format="%d/%m/%Y"
+        )
+    ```
+
+    ```py
+    # INTEIROS
+    int_cols = [
+        "VOTE",
+        "WIN",
+        "OSCAR",
+        "NOMINATION",
+        "ROTTEN_TOMATOES_CRITIC_SCORE"
+    ]
+
+    for col in int_cols:
+        df_tratado[col] = (
+            df_tratado[col]
+            .fillna(0)
+            .astype(int)
+        )
+    ```
+
+10. Criando a coluna de ano baseada na data de lançamento
+    ```py
+    df_tratado["YEAR"] = (
+        df_tratado["US_RELEASE_DATE"].dt.year
+    )
+    ```
+
+11. Padronizando colunas categóricas
+    ```py
+    df_tratado["GENRE"] = (
+        df_tratado["GENRE"]
+        .str.split(",")
+        .str[0]
+        .str.strip()
+    )
+
+    df_tratado["COUNTRY_ORIGIN"] = (
+        df_tratado["COUNTRY_ORIGIN"]
+        .str.split(",")
+        .str[0]
+        .str.strip()
+    )
+
+    df_tratado["LANGUAGE"] = (
+        df_tratado["LANGUAGE"]
+        .str.split(",")
+        .str[0]
+        .str.strip()
+    )
+
+    df_tratado["PRODUCTION_COMPANY"] = (
+        df_tratado["PRODUCTION_COMPANY"]
+        .str.split(",")
+        .str[0]
+        .str.strip()
+    )
+    ```
+
+12. Organização final das colunas
+    ```py
+    df_tratado = df_tratado.drop(
+        columns=["Unnamed: 0"],
+        errors="ignore"
+    )
+
+    df_tratado = df_tratado[
+        sorted(df_tratado.columns)
+    ]
+    ```
+
+13. Salvando a tabela tratada na camada Silver
+    ```py
+    df_tratado.to_gbq(
+        project_id=gcp_id_do_projeto,
+        destination_table="silver.complete_dc_marvel",
+        if_exists="replace",
+        credentials=my_gcp_cred,
+    )
+    ```
+</details>
+
+<h2 align="center">EXTRAS</h2>
 
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
