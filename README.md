@@ -111,13 +111,15 @@ tmdbsimple              # Cliente Python simples para consumir a API do The Movi
 
 ### 1. Criar Projeto no GCP
 
-https://console.cloud.google.com
+- ### https://console.cloud.google.com
 
-![](assets/image.png)
-![](assets/image-1.png)
-![](assets/image-2.png)
-![](assets/image-3.png)
-![](assets/image-4.png)
+> <div align="center">
+>     <img width="50%" src="assets/image.png">
+>     <img width="50%" src="assets/image-1.png">
+>     <img width="50%" src="assets/image-2.png">
+>     <img width="50%" src="assets/image-3.png">
+>     <img width="50%" src="assets/image-4.png">
+> </div>
 
 ### Criar a Service Account
 
@@ -128,17 +130,20 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 - **BigQuery Data Editor** → Acesso para editar todos os tipos de conteúdo de conjuntos de dados
 - **BigQuery Job User** → Acesso para executar jobs
 
-![](assets/image-5.png)
-![](assets/image-6.png)
-![](assets/image-7.png)
-![](assets/image-8.png)
+> <div align="center">
+>     <img width="20%" src="assets/image-5.png"> <br>
+>     <img width="50%" src="assets/image-6.png">
+>     <img width="50%" src="assets/image-7.png">
+>     <img width="50%" src="assets/image-8.png">
+> </div>
 
 #### Baixar chave:
-
-![](assets/image-9.png)
-![](assets/image-10.png)
-![](assets/image-11.png)
-![](assets/image-12.png)
+> <div align="center">
+>     <img width="50%" src="assets/image-9.png">
+>     <img width="50%" src="assets/image-10.png">
+>     <img width="50%" src="assets/image-11.png"> <br>
+>     <img width="20%" src="assets/image-12.png">
+> </div>
 
 </details>
 
@@ -209,7 +214,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 Lê um arquivo CSV hospedado no GitHub e carrega em um DataFrame.
 
-![](assets/image-13.png)
+<img width="50%" src="assets/image-13.png">
 
 ```py
 df = pd.read_csv(f"{dataset_movies_url}/___NOME_DO_ARQUIVO___.csv")
@@ -227,7 +232,7 @@ df_tmd_ratings_small = pd.read_csv(f"{dataset_movies_url}/The_Movies_Dataset/tmd
 
 Executa uma consulta SQL no BigQuery e retorna os dados em DataFrame.
 
-![](assets/image-14.png)
+<img width="50%" src="assets/image-14.png">
 
 ```py
 df = my_gcp_client.query(
