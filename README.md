@@ -150,146 +150,57 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 <h1 align="center">3. CÓDIGO · Ingestão</h1>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
-### Imports
-
-1. Importa as bibliotecas usadas no projeto para BigQuery, Selenium, Pandas, TMDB e manipulação do sistema operacional.
+1. Import e definição das view com pandas
     ```py
     from google.cloud import bigquery
     from google.oauth2 import service_account
-
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-
     import pandas as pd
-    import tmdbsimple as tmdb
-    import os
-    ```
 
-### Configuração do Pandas
-
-2. Define como os DataFrames serão exibidos no notebook.
-    ```py
     pd.set_option("display.max_columns", None)
-    pd.set_option("display.max_rows", 20)
-    ```
-
-### Definição das Fontes de Dados
-
-#### GitHub
-
-3. URL base dos arquivos CSV armazenados no GitHub.
+    pd.set_option("display.max_rows", 10)
+    ``` 
+2. Definição das variáveis utilizadas para ingestão de dados
     ```py
     dataset_movies_url = "https://media.githubusercontent.com/media/lucas-aulas/dataset-movies/refs/heads/main"
+
+    gcp_project_id_aula = "project202605-496913"
+
+    gcp_service_acc_file_aluno = "../secrets/____________________.json"
+    gcp_id_do_projeto = "____________________"
+    my_gcp_cred = service_account.Credentials.from_service_account_file(gcp_service_acc_file_aluno)
+    my_gcp_client = bigquery.Client(credentials=my_gcp_cred)
     ```
-
-#### GCP
-
-4. Define o ID do projeto no Google Cloud Platform.
+3. Leitura dos dados da fonte externa - GitHub
     ```py
-    gcp_project_id = "project202605-496913"
+    df_imdb_filmes = pd.read_csv(f"{dataset_movies_url}/imdb_filmes.csv")
     ```
-
-
-### Definir as Credenciais
-
-5. Carrega o arquivo JSON da Service Account para autenticação no GCP.
-    - Salve na pasta `/secrets/` o seu arquivo JSON baixado.
+4. Leitura dos dados da fonte externa - BigQuery
     ```py
-    my_gcp_sa_file = "../secrets/___SEU_ARQUIVO_JSON___.json"
+    df_boxoffice_dc_marvel = my_gcp_client.query(
+        f"SELECT * FROM raw.boxoffice_dc_marvel"
+    ).to_dataframe(create_bqstorage_client=False)
     ```
+5. Ordenando as coluas alfabeticamente
     ```py
-    my_gcp_cred = service_account.Credentials.from_service_account_file(my_gcp_sa_file)
+    df_boxoffice_dc_marvel = df_boxoffice_dc_marvel[sorted(df_boxoffice_dc_marvel.columns)]
+    df_imdb_filmes = df_imdb_filmes[sorted(df_imdb_filmes.columns)]
     ```
-
-### Criar Cliente do BigQuery
-
-6. Cria a conexão informando explicitamente o projeto do GCP.
+6. Envio para o seu banco de dados
     ```py
-    my_gcp_client = bigquery.Client(credentials=my_gcp_cred, project=gcp_project_id)
+    df_imdb_filmes.to_gbq(
+        project_id=gcp_id_do_projeto,
+        destination_table="bronze.imdb_filmes",
+        if_exists="replace",
+        credentials=my_gcp_cred,
+    )
+
+    df_boxoffice_dc_marvel.to_gbq(
+        project_id=gcp_id_do_projeto,
+        destination_table="bronze.boxoffice_dc_marvel",
+        if_exists="replace",
+        credentials=my_gcp_cred,
+    )
     ```
-
-<h1 align="center">Ingestão de Dados (EXTRACT)</h1>
-
-### GitHub
-
-Lê um arquivo CSV hospedado no GitHub e carrega em um DataFrame.
-
-<img width="40%" src="assets/image-13.png">
-
-```py
-df = pd.read_csv(f"{dataset_movies_url}/___NOME_DO_ARQUIVO___.csv")
-```
-
-```py
-# Ex:
-df_imdb_filmes = pd.read_csv(f"{dataset_movies_url}/imdb_filmes.csv")
-
-df_tmd_ratings_small = pd.read_csv(f"{dataset_movies_url}/The_Movies_Dataset/tmd_ratings_small.csv")
-```
-
-
-### BigQuery
-
-Executa uma consulta SQL no BigQuery e retorna os dados em DataFrame.
-
-<img width="25%" src="assets/image-14.png">
-
-```py
-df = my_gcp_client.query(
-    f"""
-    SELECT *
-    FROM {gcp_project_id}.___DATASET___.___TABELA___
-    """
-).to_dataframe(create_bqstorage_client=False)
-```
-
-```py
-# Ex:
-df_boxoffice_dc_marvel = my_gcp_client.query(
-    f"""
-    SELECT *
-    FROM {gcp_project_id}.raw.imdb_filmes
-    """
-).to_dataframe(create_bqstorage_client=False)
-```
-
-<h1 align="center">Envio de Dados para o BigQuery (LOAD)</h1>
-
-### Opção 1: `to_gbq` *recomendada
-
-Envia um DataFrame para o BigQuery usando pandas-gbq.
-
-```py
-df.to_gbq(
-    project_id="_____",
-    destination_table="dataset.table_name",
-    if_exists="replace",
-    credentials=my_gcp_cred,
-)
-```
-
-```py
-# Ex:
-df_boxoffice_dc_marvel.to_gbq(
-    project_id="___ID_DO_SEU_PROJETO___",
-    destination_table="bronze.boxoffice_dc_marvel",
-    if_exists="replace",
-    credentials=my_gcp_cred,
-)
-```
-
-### Opção 2: `load_table_from_dataframe`
-
-Envia um DataFrame do Pandas para uma tabela no BigQuery.
-
-```py
-my_gcp_client.load_table_from_dataframe(df, "dataset.table_name")
-```
-
-```py
-# Ex:
-my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffice_dc_marvel")
-```
 </details>
 
 <h1 align="center">4. CÓDIGO · Tratamento</h1>
@@ -301,43 +212,28 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
     from google.oauth2 import service_account
     import pandas as pd
 
-    # CONFIGS PARA VIEW
     pd.set_option("display.max_columns", None)
     pd.set_option("display.max_rows", 10)
     ```
 2. Variáveis e informações para a ingestão
     ```py
-    # +++++++++++++++++++++
-    # + INGESTAO DE DADOS +
+    gcp_service_acc_file_aluno = "../secrets/____________________.json"
+    gcp_id_do_projeto = "____________________"
 
-    # MEU BANCO
-    gcp_service_acc_file_aluno = "../secrets/__________.json"
-    gcp_id_do_projeto = "__________"
+    my_gcp_cred = service_account.Credentials.from_service_account_file(gcp_service_acc_file_aluno)
 
-    my_gcp_cred = service_account.Credentials.from_service_account_file(
-        gcp_service_acc_file_aluno
-    )
-
-    my_gcp_client = bigquery.Client(
-        credentials=my_gcp_cred
-    )
+    my_gcp_client = bigquery.Client(credentials=my_gcp_cred)
     ```
 3. Leitura da tabela `boxoffice_dc_marvel` no BigQuery
     ```py
     df_boxoffice_dc_marvel = my_gcp_client.query(
-        f"""
-        SELECT *
-        FROM {gcp_id_do_projeto}.bronze.boxoffice_dc_marvel
-        """
+        "SELECT * FROM bronze.boxoffice_dc_marvel"
     ).to_dataframe(create_bqstorage_client=False)
     ```
 4. Leitura da tabela `imdb_filmes` no BigQuery
     ```py
     df_imdb_filmes = my_gcp_client.query(
-        f"""
-        SELECT *
-        FROM {gcp_id_do_projeto}.bronze.imdb_filmes
-        """
+        "SELECT * FROM bronze.imdb_filmes"
     ).to_dataframe(create_bqstorage_client=False)
     ```
 5. Merge dos DataFrames
@@ -379,10 +275,7 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
     ```
 8. Visualizando os filmes com maior nota IMDB
     ```py
-    df_complete_dc_marvel.sort_values(
-        by="RATING_IMDB",
-        ascending=False
-    ).head(2)
+    df_complete_dc_marvel.sort_values(by="RATING_IMDB", ascending=False).head(2)
     ```
 
 9. Tratamento das colunas monetárias, percentuais, datas e inteiros
@@ -391,7 +284,6 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
     ```
 
     ```py
-    # MONETÁRIAS
     money_cols = [
         "BOX_OFFICE_GROSS_OTHER_TERRITORIES",
         "BUDGET_x",
@@ -404,41 +296,29 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
 
     for col in money_cols:
         df_tratado[col] = (
-            df_tratado[col]
-            .astype(str)
-            .str.replace("$", "")
-            .str.replace(",", "")
-            .replace("None", 0)
-            .astype(float)
+            df_tratado[col].astype(str).str.replace("$", "").str.replace(",", "").replace("None", 0).astype(float)
         )
     ```
 
     ```py
-    # PERCENTUAIS
     percent_cols = ["DOMESTIC"]
 
     for col in percent_cols:
         df_tratado[col] = (
-            df_tratado[col]
-            .astype(str)
-            .str.replace("%", "")
-            .astype(float)
+            df_tratado[col].astype(str).str.replace("%", "").astype(float)
         )
     ```
 
     ```py
-    # DATA/TEMPO
     date_cols = ["US_RELEASE_DATE"]
 
     for col in date_cols:
         df_tratado[col] = pd.to_datetime(
-            df_tratado[col],
-            format="%d/%m/%Y"
+            df_tratado[col], format="%d/%m/%Y"
         )
     ```
 
     ```py
-    # INTEIROS
     int_cols = [
         "VOTE",
         "WIN",
@@ -449,9 +329,7 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
 
     for col in int_cols:
         df_tratado[col] = (
-            df_tratado[col]
-            .fillna(0)
-            .astype(int)
+            df_tratado[col].fillna(0).astype(int)
         )
     ```
 
@@ -465,39 +343,26 @@ my_gcp_client.load_table_from_dataframe(df_boxoffice_dc_marvel, "bronze.boxoffic
 11. Padronizando colunas categóricas
     ```py
     df_tratado["GENRE"] = (
-        df_tratado["GENRE"]
-        .str.split(",")
-        .str[0]
-        .str.strip()
+        df_tratado["GENRE"].str.split(",").str[0].str.strip()
     )
 
     df_tratado["COUNTRY_ORIGIN"] = (
-        df_tratado["COUNTRY_ORIGIN"]
-        .str.split(",")
-        .str[0]
-        .str.strip()
+        df_tratado["COUNTRY_ORIGIN"].str.split(",").str[0].str.strip()
     )
 
     df_tratado["LANGUAGE"] = (
-        df_tratado["LANGUAGE"]
-        .str.split(",")
-        .str[0]
-        .str.strip()
+        df_tratado["LANGUAGE"].str.split(",").str[0].str.strip()
     )
 
     df_tratado["PRODUCTION_COMPANY"] = (
-        df_tratado["PRODUCTION_COMPANY"]
-        .str.split(",")
-        .str[0]
-        .str.strip()
+        df_tratado["PRODUCTION_COMPANY"].str.split(",").str[0].str.strip()
     )
     ```
 
 12. Organização final das colunas
     ```py
     df_tratado = df_tratado.drop(
-        columns=["Unnamed: 0"],
-        errors="ignore"
+        columns=["Unnamed: 0"], errors="ignore"
     )
 
     df_tratado = df_tratado[
