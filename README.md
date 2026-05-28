@@ -219,9 +219,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
     ```py
     gcp_service_acc_file_aluno = "../secrets/____________________.json"
     gcp_id_do_projeto = "____________________"
-
     my_gcp_cred = service_account.Credentials.from_service_account_file(gcp_service_acc_file_aluno)
-
     my_gcp_client = bigquery.Client(credentials=my_gcp_cred)
     ```
 3. Leitura da tabela `boxoffice_dc_marvel` no BigQuery
@@ -379,6 +377,238 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
         credentials=my_gcp_cred,
     )
     ```
+</details>
+
+<h1 align="center">5. CÓDIGO · Star Schema</h1>
+<details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
+
+1. Importação das bibliotecas necessárias para conexão com o BigQuery e manipulação dos dados com Pandas.
+    ```py
+    from google.cloud import bigquery
+    from google.oauth2 import service_account
+    import pandas as pd
+
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.max_rows", 10)
+    ```
+
+2. Configuração das credenciais e criação do cliente de conexão com o Google BigQuery.
+    ```py
+    gcp_service_acc_file_aluno = "../secrets/meu-projeto-eng-dados-c278f0daa3bf.json"
+    gcp_id_do_projeto = "meu-projeto-eng-dados"
+    my_gcp_cred = service_account.Credentials.from_service_account_file(gcp_service_acc_file_aluno)
+    my_gcp_client = bigquery.Client(credentials=my_gcp_cred)
+    ```
+
+3. Leitura da tabela Silver armazenada no BigQuery para criação da camada Gold.
+    ```py
+    df_silver = my_gcp_client.query(
+        f"SELECT * FROM silver.complete_dc_marvel",
+    ).to_dataframe(create_bqstorage_client=False)
+    ```
+
+4. Criação da dimensão de filmes contendo atributos descritivos de cada produção.
+    ```py
+    dim_film = (
+        df_silver[["FILM", "GENRE", "RATING_MPA", "LANGUAGE", "BREAK_EVEN", "MCU", "MALE_FEMALE_LED", "PHASE"]]
+        .drop_duplicates()
+        .sort_values(by="FILM")
+        .reset_index(drop=True)
+    )
+
+    dim_film["ID_FILM"] = dim_film.index + 1
+
+    dim_film.head(5)
+    ```
+
+5. Criação da dimensão de equipe técnica contendo diretor, roteirista e ator principal.
+    ```py
+    dim_staff = (
+        df_silver[["DIRECTOR", "WRITER", "STAR"]]
+        .drop_duplicates()
+        .sort_values(by=["DIRECTOR", "WRITER"])
+        .reset_index(drop=True)
+    )
+
+    dim_staff["ID_STAFF"] = dim_staff.index + 1
+
+    dim_staff.head(2)
+    ```
+
+6. Criação da dimensão de franquias e famílias de personagens dos filmes.
+    ```py
+    dim_franchise = (
+        df_silver[["FRANCHISE", "CHARACTER_FAMILY"]]
+        .drop_duplicates()
+        .sort_values(by=["FRANCHISE", "CHARACTER_FAMILY"])
+        .reset_index(drop=True)
+    )
+
+    dim_franchise["ID_FRANCHISE"] = dim_franchise.index + 1
+
+    dim_franchise.head(2)
+    ```
+
+7. Criação da dimensão de produção contendo empresa produtora, distribuidora e localização das filmagens.
+    ```py
+    dim_production = (
+        df_silver[["PRODUCTION_COMPANY", "DISTRIBUTOR", "COUNTRY_ORIGIN", "FILMING_LOCATION"]]
+        .drop_duplicates()
+        .sort_values(by=["PRODUCTION_COMPANY", "DISTRIBUTOR", "COUNTRY_ORIGIN", "FILMING_LOCATION"])
+        .reset_index(drop=True)
+    )
+
+    dim_production["ID_PRODUCTION"] = dim_production.index + 1
+
+    dim_production.head(2)
+    ```
+
+8. Criação da dimensão de datas com informações de ano, mês e trimestre de lançamento.
+    ```py
+    dim_date = df_silver["US_RELEASE_DATE"].dropna().drop_duplicates().sort_values(by="US_RELEASE_DATE").reset_index(drop=True)
+
+    dim_date["YEAR"] = dim_date["US_RELEASE_DATE"].dt.year
+    dim_date["MONTH"] = dim_date["US_RELEASE_DATE"].dt.month
+    dim_date["QUARTER"] = dim_date["US_RELEASE_DATE"].dt.quarter
+
+    dim_date["ID_DATE"] = dim_date["US_RELEASE_DATE"].dt.strftime("%Y%m%d").astype(int)
+
+    dim_date.head(2)
+    ```
+
+9. Criação inicial da tabela fato a partir dos dados completos da camada Silver.
+    ```py
+    fact_movies = df_silver.copy()
+    ```
+
+10. Associação da dimensão de filmes à tabela fato por meio das chaves correspondentes.
+    ```py
+    fact_movies = fact_movies.merge(
+        dim_film,
+        on=["FILM", "GENRE", "RATING_MPA", "LANGUAGE", "BREAK_EVEN", "MCU", "MALE_FEMALE_LED", "PHASE"],
+        how="left",
+    )
+    ```
+
+11. Associação da dimensão de equipe técnica à tabela fato.
+    ```py
+    fact_movies = fact_movies.merge(
+        dim_staff,
+        on=["DIRECTOR", "WRITER", "STAR"],
+        how="left",
+    )
+    ```
+
+12. Associação da dimensão de franquias à tabela fato.
+    ```py
+    fact_movies = fact_movies.merge(
+        dim_franchise,
+        on=["FRANCHISE", "CHARACTER_FAMILY"],
+        how="left",
+    )
+    ```
+
+13. Associação da dimensão de produção à tabela fato.
+    ```py
+    fact_movies = fact_movies.merge(
+        dim_production,
+        on=["PRODUCTION_COMPANY", "DISTRIBUTOR", "COUNTRY_ORIGIN", "FILMING_LOCATION"],
+        how="left",
+    )
+    ```
+
+14. Associação da dimensão de datas à tabela fato utilizando a data de lançamento.
+    ```py
+    fact_movies = fact_movies.merge(
+        dim_date,
+        on=["US_RELEASE_DATE"],
+        how="left",
+    )
+    ```
+
+15. Seleção final das chaves dimensionais e métricas numéricas da tabela fato.
+    ```py
+    fact_movies = fact_movies[
+        [
+            "ID_FILM", "ID_STAFF", "ID_FRANCHISE", "ID_PRODUCTION",
+            "ID_DATE", "BUDGET_x", "INFLATION_ADJUSTED_BUDGET",
+            "GROSS_WORLD_WIDE", "INFLATION_ADJUSTED_WORLDWIDE_GROSS",
+            "GROSS_US_CANADA", "DOMESTIC", "BOX_OFFICE_GROSS_OTHER_TERRITORIES",
+            "GROSS_OPENING_WEEKEND", "GROSS_TO_BUDGET",
+            "RATING_IMDB", "ROTTEN_TOMATOES_CRITIC_SCORE",
+            "VOTE", "OSCAR", "NOMINATION", "WIN", "MINUTES"
+        ]
+    ]
+    ```
+
+16. Visualização inicial da tabela fato já estruturada no modelo Star Schema.
+    ```py
+    fact_movies.head(3)
+    ```
+
+17. Envio das tabelas dimensionais e fato para a camada Gold no BigQuery.
+    ```py
+    minhas_tabelas = {
+        "dim_date": dim_date,
+        "dim_film": dim_film,
+        "dim_franchise": dim_franchise,
+        "dim_production": dim_production,
+        "dim_staff": dim_staff,
+        "fact_movies": fact_movies,
+    }
+
+    for key, value in minhas_tabelas.items():
+        print(key)
+
+        value.to_gbq(
+            project_id=gcp_id_do_projeto,
+            destination_table=f"gold.{key}",
+            if_exists="replace",
+            credentials=my_gcp_cred,
+        )
+    ```
+
+18. Definição das chaves primárias das tabelas dimensionais no BigQuery.
+    ```sql
+    ALTER TABLE gold.dim_date
+    ADD PRIMARY KEY (ID_DATE) NOT ENFORCED;
+
+    ALTER TABLE gold.dim_film
+    ADD PRIMARY KEY (ID_FILM) NOT ENFORCED;
+
+    ALTER TABLE gold.dim_franchise
+    ADD PRIMARY KEY (ID_FRANCHISE) NOT ENFORCED;
+
+    ALTER TABLE gold.dim_production
+    ADD PRIMARY KEY (ID_PRODUCTION) NOT ENFORCED;
+
+    ALTER TABLE gold.dim_staff
+    ADD PRIMARY KEY (ID_STAFF) NOT ENFORCED;
+    ```
+
+19. Criação das chaves estrangeiras da tabela fato para garantir o relacionamento com as dimensões.
+    ```sql
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_date
+    FOREIGN KEY (ID_DATE) REFERENCES gold.dim_date (ID_DATE)
+    NOT ENFORCED;
+
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_film
+    FOREIGN KEY (ID_FILM) REFERENCES gold.dim_film (ID_FILM)
+    NOT ENFORCED;
+
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_franchise
+    FOREIGN KEY (ID_FRANCHISE) REFERENCES gold.dim_franchise (ID_FRANCHISE)
+    NOT ENFORCED;
+
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_production
+    FOREIGN KEY (ID_PRODUCTION) REFERENCES gold.dim_production (ID_PRODUCTION)
+    NOT ENFORCED;
+
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_staff
+    FOREIGN KEY (ID_STAFF) REFERENCES gold.dim_staff (ID_STAFF)
+    NOT ENFORCED;
+    ```
+
 </details>
 
 <h2 align="center">EXTRAS</h2>
