@@ -1,8 +1,13 @@
 <div align="center">
     <hr>
-    <h1>
-        Engenharia de Dados <br> da Ingestão à modelagem <br> Star Schema <br> com Python e SQL
-    </h1>
+    <h3>
+        Engenharia de Dados <br> da Ingestão à modelagem <br> Star Schema 
+        com Python e SQL <br>
+    </h2>
+    <h4>
+        Faturamento nos cinemas • DC vs Marvel
+    </h4>
+    <hr>
 </div>
 
 
