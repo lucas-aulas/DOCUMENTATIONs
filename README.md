@@ -1,4 +1,15 @@
-<h1 align="center">1. PREPARAÇÃO DO AMBIENTE</h1>
+- **Sumário**
+    - [1. PREPARAÇÃO DO AMBIENTE](#1-preparação-do-ambiente)
+    - [2. CONFIGURAÇÃO DO BIGQUERY](#3-código--ingestão)
+    - [3. CÓDIGO · Ingestão](#3-código--ingestão)
+    - [4. CÓDIGO · Tratamento](#4-código--tratamento)
+    - [5. CÓDIGO · Star Schema](#5-código--star-schema)
+    - [Extras](#extras)
+
+<div align="center"> 
+
+# 1. PREPARAÇÃO DO AMBIENTE
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 ### `requirements.txt`
@@ -106,10 +117,13 @@ tmdbsimple              # Cliente Python simples para consumir a API do The Movi
 - Pylint (Microsoft)
 </details>
 
-<h1 align="center">2. CONFIGURAÇÃO DO BIGQUERY</h1>
+<div align="center"> 
+
+# 2. CONFIGURAÇÃO DO BIGQUERY
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
-### 1. Criar Projeto no GCP
+### Criar Projeto no GCP
 
 - ### https://console.cloud.google.com
 
@@ -147,7 +161,10 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 </details>
 
-<h1 align="center">3. CÓDIGO · Ingestão</h1>
+<div align="center"> 
+
+# 3. CÓDIGO · Ingestão
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 1. Import e definição das view com pandas
@@ -177,15 +194,10 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 4. Leitura dos dados da fonte externa - BigQuery
     ```py
     df_boxoffice_dc_marvel = my_gcp_client.query(
-        f"SELECT * FROM raw.boxoffice_dc_marvel"
+        f"SELECT * FROM {gcp_project_id_aula}.raw.boxoffice_dc_marvel"
     ).to_dataframe(create_bqstorage_client=False)
     ```
-5. Ordenando as coluas alfabeticamente
-    ```py
-    df_boxoffice_dc_marvel = df_boxoffice_dc_marvel[sorted(df_boxoffice_dc_marvel.columns)]
-    df_imdb_filmes = df_imdb_filmes[sorted(df_imdb_filmes.columns)]
-    ```
-6. Envio para o seu banco de dados
+5. Envio para o seu banco de dados
     ```py
     df_imdb_filmes.to_gbq(
         project_id=gcp_id_do_projeto,
@@ -203,7 +215,10 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
     ```
 </details>
 
-<h1 align="center">4. CÓDIGO · Tratamento</h1>
+<div align="center"> 
+
+# 4. CÓDIGO · Tratamento
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 1. Bibliotecas que vão ser utilizadas
@@ -379,7 +394,10 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
     ```
 </details>
 
-<h1 align="center">5. CÓDIGO · Star Schema</h1>
+<div align="center"> 
+
+# 5. CÓDIGO · Star Schema
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 1. Importação das bibliotecas necessárias para conexão com o BigQuery e manipulação dos dados com Pandas.
@@ -394,8 +412,8 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 2. Configuração das credenciais e criação do cliente de conexão com o Google BigQuery.
     ```py
-    gcp_service_acc_file_aluno = "../secrets/meu-projeto-eng-dados-c278f0daa3bf.json"
-    gcp_id_do_projeto = "meu-projeto-eng-dados"
+    gcp_service_acc_file_aluno = "../secrets/____________________.json"
+    gcp_id_do_projeto = "____________________"
     my_gcp_cred = service_account.Credentials.from_service_account_file(gcp_service_acc_file_aluno)
     my_gcp_client = bigquery.Client(credentials=my_gcp_cred)
     ```
@@ -465,7 +483,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 8. Criação da dimensão de datas com informações de ano, mês e trimestre de lançamento.
     ```py
-    dim_date = df_silver["US_RELEASE_DATE"].dropna().drop_duplicates().sort_values(by="US_RELEASE_DATE").reset_index(drop=True)
+    dim_date = df_silver[["US_RELEASE_DATE"]].dropna().drop_duplicates().sort_values(by="US_RELEASE_DATE").reset_index(drop=True)
 
     dim_date["YEAR"] = dim_date["US_RELEASE_DATE"].dt.year
     dim_date["MONTH"] = dim_date["US_RELEASE_DATE"].dt.month
@@ -570,49 +588,51 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
 
 18. Definição das chaves primárias das tabelas dimensionais no BigQuery.
     ```sql
-    ALTER TABLE gold.dim_date
-    ADD PRIMARY KEY (ID_DATE) NOT ENFORCED;
+    ALTER TABLE gold.dim_date ADD PRIMARY KEY (ID_DATE)
+    NOT ENFORCED;
 
-    ALTER TABLE gold.dim_film
-    ADD PRIMARY KEY (ID_FILM) NOT ENFORCED;
+    ALTER TABLE gold.dim_film ADD PRIMARY KEY (ID_FILM)
+    NOT ENFORCED;
 
-    ALTER TABLE gold.dim_franchise
-    ADD PRIMARY KEY (ID_FRANCHISE) NOT ENFORCED;
+    ALTER TABLE gold.dim_franchise ADD PRIMARY KEY (ID_FRANCHISE)
+    NOT ENFORCED;
 
-    ALTER TABLE gold.dim_production
-    ADD PRIMARY KEY (ID_PRODUCTION) NOT ENFORCED;
+    ALTER TABLE gold.dim_production ADD PRIMARY KEY (ID_PRODUCTION)
+    NOT ENFORCED;
 
-    ALTER TABLE gold.dim_staff
-    ADD PRIMARY KEY (ID_STAFF) NOT ENFORCED;
+    ALTER TABLE gold.dim_staff ADD PRIMARY KEY (ID_STAFF)
+    NOT ENFORCED;
     ```
 
 19. Criação das chaves estrangeiras da tabela fato para garantir o relacionamento com as dimensões.
     ```sql
-    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_date
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_date 
     FOREIGN KEY (ID_DATE) REFERENCES gold.dim_date (ID_DATE)
     NOT ENFORCED;
 
-    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_film
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_film 
     FOREIGN KEY (ID_FILM) REFERENCES gold.dim_film (ID_FILM)
     NOT ENFORCED;
 
-    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_franchise
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_franchise 
     FOREIGN KEY (ID_FRANCHISE) REFERENCES gold.dim_franchise (ID_FRANCHISE)
     NOT ENFORCED;
 
-    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_production
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_production 
     FOREIGN KEY (ID_PRODUCTION) REFERENCES gold.dim_production (ID_PRODUCTION)
     NOT ENFORCED;
 
-    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_staff
+    ALTER TABLE gold.fact_movies ADD CONSTRAINT fk_staff 
     FOREIGN KEY (ID_STAFF) REFERENCES gold.dim_staff (ID_STAFF)
     NOT ENFORCED;
     ```
 
 </details>
 
-<h2 align="center">EXTRAS</h2>
+<div align="center"> 
 
+# Extras
+</div>
 <details><summary><b>ℹ️ Clique para ver os detalhes</b></summary>
 
 <h2 align="left">The Movie Database (TMDB)</h2>
@@ -629,8 +649,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
     ```py
     import tmdbsimple as tmdb
 
-    tmdb_api_key = "_____"
-    tmdb.API_KEY = tmdb_api_key
+    tmdb.API_KEY = "____________________"
     ```
 2. Busca informações de filmes no TMDB.
     ```py
@@ -658,12 +677,7 @@ Cria uma conta de serviço para autenticar o acesso ao BigQuery.
     ```py
     import igmapper
 
-    client = igmapper.InstaClient(
-        csrftoken=None,
-        ds_user_id=None,
-        sessionid=None,
-        use_curl=True
-    )
+    client = igmapper.InstaClient(csrftoken=None, ds_user_id=None, sessionid=None, use_curl=True)
     ```
 2. Obtém informações públicas de um perfil do Instagram.
     ```py
